@@ -1,0 +1,5 @@
+CREATE TABLE `oa_leave` (
+  `qjbh` varchar(50) primary key,
+  `qjr` varchar(1024) default NULL,
+  `qjsj` varchar(1024) default NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
