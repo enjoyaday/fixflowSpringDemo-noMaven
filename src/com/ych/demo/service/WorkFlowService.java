@@ -37,22 +37,16 @@ public class WorkFlowService {
 	 */
 	public List<Map<String,Object>> getToDoTask(){
 		List<Map<String,Object>> taskResult = new ArrayList<Map<String,Object>>();
-		try{
-			TaskQuery taskQuery = taskService.createTaskQuery();
-			//查询admin的共享和独占任务，此处应该从session里拿当前登录用户
-			taskQuery.taskAssignee("1200119390");
-			taskQuery.taskCandidateUser("1200119390");
-			taskQuery.taskNotEnd();
-			List<TaskInstance> tasks = taskQuery.list();
-			
-			for(TaskInstance task : tasks){
-				taskResult.add(task.getPersistentState());
-			}
-		}finally{
-			//所有用到引擎service的地方最后一定要做清理操作，否则会出现线程错乱
-			processEngine.contextClose(true, false);
-		}
+		TaskQuery taskQuery = taskService.createTaskQuery();
+		//查询admin的共享和独占任务，此处应该从session里拿当前登录用户
+		taskQuery.taskAssignee("1200119390");
+		taskQuery.taskCandidateUser("1200119390");
+		taskQuery.taskNotEnd();
+		List<TaskInstance> tasks = taskQuery.list();
 		
+		for(TaskInstance task : tasks){
+			taskResult.add(task.getPersistentState());
+		}
 		return taskResult;
 	}
 	
@@ -62,10 +56,6 @@ public class WorkFlowService {
 	 * @param parasMap
 	 */
 	public void executeCommand(Map<String,Object> parasMap){
-		//这里应从session读取
-		String userId = "1200119390";
-		//这里一定要写，要给当前线程副本设置操作人，bpmcenter示例中，是在getProcessEngine(userId)里做的，这里spring没有注入，只能通过此种方式设置
-		Authentication.setAuthenticatedUserId(userId);
 		
 		String taskId = StringUtil.getString(parasMap.get("taskId"));
 		String commandType = StringUtil.getString(parasMap.get("commandType"));
@@ -81,7 +71,6 @@ public class WorkFlowService {
 		ExpandTaskCommand expandTaskCommand = new ExpandTaskCommand();
 		
 		expandTaskCommand.setCommandType(commandType);
-		expandTaskCommand.setInitiator(userId);
 		expandTaskCommand.setUserCommandId(commandId);
 		expandTaskCommand.setTaskComment(taskComment);
 		
@@ -93,16 +82,14 @@ public class WorkFlowService {
 		if (StringUtil.isNotEmpty(taskId)) {
 			expandTaskCommand.setTaskId(taskId);
 		} else {
+			//方法执行前，已经设置过当前处理人，所以这里能拿到，详见fixflowInterceptor
+			String userId = Authentication.getAuthenticatedUserId();
+			expandTaskCommand.setInitiator(userId);
 			expandTaskCommand.setBusinessKey(businessKey);
 			expandTaskCommand.setProcessDefinitionKey(processDefinitionKey);
 		}
 		
-		try{
-			taskService.expandTaskComplete(expandTaskCommand, null);
-		}finally{
-			//所有用到引擎service的地方最后一定要做清理操作，否则会出现线程错乱
-			processEngine.contextClose(true, false);
-		}
+		taskService.expandTaskComplete(expandTaskCommand, null);
 		
 	}
 	
@@ -118,18 +105,13 @@ public class WorkFlowService {
 		String processKey = params.get("processDefinitionKey");
 		String taskId = params.get("taskId");
 		List<TaskCommandInst> taskCommands = null;
-		try{
-			if(taskId != null){
-				taskCommands = taskService.GetTaskCommandByTaskId(taskId, false);
-			}
-			else if(processKey != null){
-				taskCommands = taskService.getSubTaskTaskCommandByKey(processKey);
-			}else{
-				throw new RuntimeException("参数错误");
-			}
-		}finally{
-			//所有用到引擎service的地方最后一定要做清理操作，否则会出现线程错乱
-			processEngine.contextClose(true, false);
+		if(taskId != null){
+			taskCommands = taskService.GetTaskCommandByTaskId(taskId, false);
+		}
+		else if(processKey != null){
+			taskCommands = taskService.getSubTaskTaskCommandByKey(processKey);
+		}else{
+			throw new RuntimeException("参数错误");
 		}
 		
 		if(taskCommands != null){
@@ -139,6 +121,12 @@ public class WorkFlowService {
 			}
 		}
 		return toolbarInfo;
+	}
+	
+	public void closeEngine(){
+		if(processEngine != null){
+			processEngine.contextClose(true, false);
+		}
 	}
 
 }

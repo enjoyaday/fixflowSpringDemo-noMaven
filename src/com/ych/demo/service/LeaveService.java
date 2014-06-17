@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.founder.fix.fixflow.core.impl.util.StringUtil;
 import com.ych.demo.dao.LeaveDao;
 import com.ych.demo.model.LeaveModel;
 
@@ -30,7 +31,7 @@ public class LeaveService {
 	public void saveLeave(Map<String,Object> params){
 		
 		String qjbh = params.get("qjbh").toString();
-		String nextAssgine = params.get("nextAssgine").toString();
+		String nextAssgine = StringUtil.getString(params.get("nextAssgine"));
 		
 		Object taskId = params.get("taskId");
 		//不存在taskId,表示第一次启动流程，需要保存业务数据
@@ -49,10 +50,12 @@ public class LeaveService {
 		//将主键作为关连建给流程引擎
 		params.put("bizKey", qjbh);
 		//给流程设置变量，nextAssignee在流程定义中被设置为审批节点的处理人，详见流程定义
-		Map<String,Object> taskVariable = new HashMap<String,Object>();
-		taskVariable.put("nextAssignee", nextAssgine);
 		
-		params.put("taskVariable", taskVariable);
+		if(StringUtil.isNotEmpty(nextAssgine)){
+			Map<String,Object> taskVariable = new HashMap<String,Object>();
+			taskVariable.put("nextAssignee", nextAssgine);
+			params.put("taskVariable", taskVariable);
+		}
 		
 		workFlowService.executeCommand(params);
 		

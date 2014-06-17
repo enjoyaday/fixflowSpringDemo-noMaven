@@ -50,7 +50,8 @@
 	<bean id="modelService" factory-bean="processEngine" factory-method="getModelService" />
 	<!-- 运行时服务 -->
 	<bean id="runtimeService" factory-bean="processEngine" factory-method="getRuntimeService" />
-
+	
+	<bean id="fixflowInterceptor" class="com.ych.aop.FixflowInterceptor" />
 	<!-- 事务通知 -->
 	<tx:advice id="transactionAdvice" transaction-manager="transactionManager">
 		<tx:attributes>
@@ -69,5 +70,6 @@
 		<!-- 事物切入点 -->
 		<aop:pointcut id="txPointcut" expression="execution(* com.ych.demo.service.*.*(..))" />
 		<aop:advisor advice-ref="transactionAdvice" pointcut-ref="txPointcut" />
+		<aop:advisor advice-ref="fixflowInterceptor" pointcut-ref="txPointcut"  />
 	</aop:config>
 </beans> 
